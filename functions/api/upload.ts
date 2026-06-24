@@ -86,8 +86,15 @@ async function ensureBucket(env: Env, bucket: string) {
 
 export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   try {
-    if (!env.FIREBASE_API_KEY || !env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
-      return jsonResponse({ error: "Missing Cloudflare environment variables for upload" }, 500);
+    const missingEnv = ["FIREBASE_API_KEY", "SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"].filter(
+      (key) => !env[key as keyof Env],
+    );
+
+    if (missingEnv.length > 0) {
+      return jsonResponse(
+        { error: `Missing Cloudflare environment variables for upload: ${missingEnv.join(", ")}` },
+        500,
+      );
     }
 
     const token = request.headers.get("Authorization")?.match(/^Bearer\s+(.+)$/i)?.[1];
