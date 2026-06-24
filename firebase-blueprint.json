@@ -1,0 +1,54 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "phoneNumber": { "type": "string" },
+        "location": { "type": "string" },
+        "role": { "type": "string", "enum": ["user", "admin"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "privacySettings": {
+          "type": "object",
+          "properties": {
+            "showEmail": { "type": "boolean" },
+            "showPhone": { "type": "boolean" },
+            "showLocation": { "type": "boolean" }
+          }
+        }
+      },
+      "required": ["uid", "email", "displayName"]
+    },
+    "Listing": {
+      "title": "Listing",
+      "description": "Marketplace listing for an animal or accessory",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "price": { "type": "number" },
+        "animalType": { "type": "string", "enum": ["pet", "livestock", "accessory"] },
+        "breed": { "type": "string" },
+        "age": { "type": "string" },
+        "location": { "type": "string" },
+        "images": { "type": "array", "items": { "type": "string" } },
+        "contactPreference": { "type": "string", "enum": ["chat", "phone", "email"] },
+        "authorId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["active", "sold", "deleted"] }
+      },
+      "required": ["title", "price", "animalType", "authorId"]
+    }
+  },
+  "firestore": {
+    "/users/{uid}": { "schema": "User", "description": "User profiles" },
+    "/listings/{listingId}": { "schema": "Listing", "description": "Marketplace listings" }
+  }
+}

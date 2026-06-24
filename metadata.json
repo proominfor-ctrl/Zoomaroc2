@@ -1,0 +1,7 @@
+{
+  "name": "ZOOmaroc",
+  "description": "A secure and modern online marketplace for animals (pets, livestock, accessories) in Morocco, featuring real-time chat, secure authentication, and an admin dashboard.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}

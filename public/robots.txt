@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /chat/
+Disallow: /profile/
+Disallow: /login
+
+Sitemap: https://su9.ma/sitemap.xml

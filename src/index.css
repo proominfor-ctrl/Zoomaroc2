@@ -1,0 +1,82 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Playfair Display", Georgia, serif;
+  --navy-900: #0b2238;
+  --navy-700: #12344a;
+  --cream-50: #f9f6f2;
+  --muted-400: #6b7280;
+  --gold-500: #b8860b;
+  --gold-400: #d4a94a;
+}
+
+@layer base {
+  body {
+    @apply font-sans text-gray-900 bg-gray-50;
+  }
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+@layer components {
+  :root {
+    --brand-start: var(--navy-700);
+    --brand-end: var(--navy-900);
+    --accent: var(--gold-500);
+    --glass: rgba(255,255,255,0.65);
+  }
+
+  .btn-primary {
+    @apply bg-transparent text-[var(--brand-end)] font-semibold rounded-xl px-4 py-2 border border-[var(--accent)] hover:bg-[var(--accent)] hover:text-white transition-colors;
+  }
+
+  .glass {
+    background: linear-gradient(90deg, rgba(255,255,255,0.75), rgba(255,255,255,0.6));
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+  }
+
+  .nav-link {
+    position: relative;
+  }
+  .nav-link::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -4px;
+    height: 2px;
+    border-radius: 6px;
+    background: var(--accent);
+    transform: scaleX(0);
+    transform-origin: left center;
+    transition: transform 220ms ease;
+  }
+  .nav-link:hover::after,
+  .nav-link.active::after {
+    transform: scaleX(1);
+  }
+
+  .card-dynamic {
+    transition: transform 220ms ease, box-shadow 220ms ease;
+    will-change: transform;
+  }
+  .card-dynamic:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 12px 30px rgba(11,34,56,0.08);
+  }
+
+  @keyframes floatSlow {
+    0% { transform: translateY(0px); }
+    50% { transform: translateY(-8px); }
+    100% { transform: translateY(0px); }
+  }
+  .float-slow { animation: floatSlow 8s ease-in-out infinite; }
+}
