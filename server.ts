@@ -33,31 +33,6 @@ if (!supabaseUrl || !supabaseKey) {
 }
 
 const supabase = createClient(supabaseUrl, supabaseKey);
-const supabaseStorageBucket = process.env.SUPABASE_STORAGE_BUCKET || "images";
-let supabaseStorageBucketReady = false;
-
-async function ensureSupabaseStorageBucket() {
-  if (supabaseStorageBucketReady) return;
-
-  const { error: getBucketError } = await supabase.storage.getBucket(supabaseStorageBucket);
-  if (!getBucketError) {
-    supabaseStorageBucketReady = true;
-    return;
-  }
-
-  if (!getBucketError.message.toLowerCase().includes("not found")) {
-    throw getBucketError;
-  }
-
-  const { error: createBucketError } = await supabase.storage.createBucket(supabaseStorageBucket, {
-    public: true,
-    fileSizeLimit: 10 * 1024 * 1024,
-    allowedMimeTypes: ["image/jpeg", "image/png", "image/webp", "image/gif"],
-  });
-
-  if (createBucketError) throw createBucketError;
-  supabaseStorageBucketReady = true;
-}
 
 function sanitizeFileName(fileName: string) {
   return path.basename(fileName).replace(/[^a-zA-Z0-9._-]/g, "-");
@@ -173,11 +148,9 @@ async function startServer() {
       const baseName = `${Date.now()}-${Math.random().toString(36).substring(7)}-${sanitizeFileName(file.originalname)}`;
       const fileName = `${folder}/${baseName}`;
       
-      await ensureSupabaseStorageBucket();
-
-      // Upload to Supabase Storage. The bucket is created lazily when missing.
+      // Upload to Supabase Bucket (make sure to create a bucket named 'images' in Supabase)
       const { data, error } = await supabase.storage
-        .from(supabaseStorageBucket)
+        .from('images')
         .upload(fileName, file.buffer, {
           contentType: file.mimetype,
           upsert: false
@@ -187,7 +160,7 @@ async function startServer() {
 
       // Get Public URL
       const { data: { publicUrl } } = supabase.storage
-        .from(supabaseStorageBucket)
+        .from('images')
         .getPublicUrl(fileName);
 
       res.json({ url: publicUrl });
@@ -346,11 +319,8 @@ async function startServer() {
       etag: true,
       immutable: true,
       maxAge: '1y',
-      setHeaders: (res, filePath, stat) => {
-        if (filePath.endsWith('.js')) {
-          res.setHeader('Content-Type', 'application/javascript');
-        }
-        else if (filePath.endsWith('index.html')) {
+      setHeaders: (res, filePath) => {
+        if (filePath.endsWith('index.html')) {
           res.setHeader('Cache-Control', 'no-cache');
         }
       },
