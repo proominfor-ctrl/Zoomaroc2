@@ -346,8 +346,11 @@ async function startServer() {
       etag: true,
       immutable: true,
       maxAge: '1y',
-      setHeaders: (res, filePath) => {
-        if (filePath.endsWith('index.html')) {
+      setHeaders: (res, filePath, stat) => {
+        if (filePath.endsWith('.js')) {
+          res.setHeader('Content-Type', 'application/javascript');
+        }
+        else if (filePath.endsWith('index.html')) {
           res.setHeader('Cache-Control', 'no-cache');
         }
       },
