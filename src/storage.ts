@@ -39,10 +39,14 @@ export async function uploadImage(file: File | Blob, originalName: string, folde
     });
   }
 
-  const result = await response.json();
+  const result = await response.json().catch(() => null);
 
   if (!response.ok) {
-    throw new Error(result.error || `Server responded with status ${response.status}`);
+    throw new Error(result?.error || `Server responded with status ${response.status}`);
+  }
+
+  if (!result?.url) {
+    throw new Error('Upload response did not include a file URL.');
   }
 
   return result.url;
