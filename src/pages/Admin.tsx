@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { db, collection, getDocs, query, where, orderBy, limit, User, doc, getDoc, updateDoc, deleteDoc, Timestamp, addDoc, setDoc, getCountFromServer } from '../firebase';
-import { Shield, Users, LayoutGrid, AlertTriangle, BarChart3, Trash2, Ban, CheckCircle2, MoreVertical, Search, Filter, BadgeCheck, ExternalLink, MessageSquare, Settings, Image as ImageIcon, Stethoscope, Heart } from 'lucide-react';
+import { Shield, Users, LayoutGrid, AlertTriangle, BarChart3, Trash2, Ban, CheckCircle2, MoreVertical, Search, Filter, BadgeCheck, ExternalLink, MessageSquare, Settings, Image as ImageIcon, Stethoscope, Heart, HelpCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import { uploadImage } from '../storage'; 
@@ -21,6 +21,7 @@ export default function Admin({ user }: Props) {
   const [listings, setListings] = useState<any[]>([]);
   const [healthPosts, setHealthPosts] = useState<any[]>([]);
   const [couplingOffers, setCouplingOffers] = useState<any[]>([]);
+  const [lostFoundPosts, setLostFoundPosts] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [reports, setReports] = useState<any[]>([]);
   const [adminSearchTerm, setAdminSearchTerm] = useState('');
@@ -58,14 +59,16 @@ export default function Admin({ user }: Props) {
     try {
       setStatsError('');
       
-      const [usersCount, listingsCount, couplingCount, healthCount, pendingListings, pendingCoupling, pendingHealth, reportsCount] = await Promise.all([
+      const [usersCount, listingsCount, couplingCount, healthCount, lostFoundCount, pendingListings, pendingCoupling, pendingHealth, pendingLostFound, reportsCount] = await Promise.all([
         getCountFromServer(collection(db, 'users')),
         getCountFromServer(collection(db, 'listings')),
         getCountFromServer(collection(db, 'coupling_offers')),
         getCountFromServer(collection(db, 'health_posts')),
+        getCountFromServer(collection(db, 'lost_and_found_posts')),
         getCountFromServer(query(collection(db, 'listings'), where('status', '==', 'pending'))),
         getCountFromServer(query(collection(db, 'coupling_offers'), where('status', '==', 'pending'))),
         getCountFromServer(query(collection(db, 'health_posts'), where('status', '==', 'pending'))),
+        getCountFromServer(query(collection(db, 'lost_and_found_posts'), where('status', '==', 'pending'))),
         getCountFromServer(query(collection(db, 'reports'), where('status', '==', 'pending')))
       ]);
 
@@ -74,9 +77,11 @@ export default function Admin({ user }: Props) {
         listings: listingsCount.data().count,
         couplingCount: couplingCount.data().count,
         healthCount: healthCount.data().count,
+        lostFoundCount: lostFoundCount.data().count,
         pendingListings: pendingListings.data().count,
         pendingCoupling: pendingCoupling.data().count,
         pendingHealth: pendingHealth.data().count,
+        pendingLostFound: pendingLostFound.data().count,
         pendingReports: reportsCount.data().count
       });
     } catch (error) {
@@ -106,6 +111,17 @@ export default function Admin({ user }: Props) {
       return bTime - aTime;
     });
     setHealthPosts(data);
+  };
+
+  const fetchLostFoundPosts = async () => {
+    const snapshot = await getDocs(query(collection(db, 'lost_and_found_posts'), limit(100)));
+    const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    data.sort((a: any, b: any) => {
+      const aTime = a.approvedAt?.toMillis?.() || a.createdAt?.toMillis?.() || 0;
+      const bTime = b.approvedAt?.toMillis?.() || b.createdAt?.toMillis?.() || 0;
+      return bTime - aTime;
+    });
+    setLostFoundPosts(data);
   };
 
   const fetchUsers = async () => {
@@ -190,6 +206,7 @@ export default function Admin({ user }: Props) {
       users: fetchUsers,
       reports: fetchReports,
       stats: fetchStats,
+      lostfound: fetchLostFoundPosts,
       settings: fetchHeroSettings,
       coupling: fetchCouplingOffers
     };
@@ -302,6 +319,40 @@ export default function Admin({ user }: Props) {
     }
     toast.success('Health post approved');
     fetchHealthPosts();
+  };
+
+  const handleApproveLostFoundPost = async (post: any) => {
+    try {
+      await updateDoc(doc(db, 'lost_and_found_posts', post.id), { 
+        status: 'active',
+        approvedAt: Timestamp.now(),
+        updatedAt: Timestamp.now()
+      });
+      await addDoc(collection(db, 'notifications'), {
+        userId: post.authorId,
+        type: 'lostfound_approved',
+        title: 'Lost/Found Post Approved! ✨',
+        message: `Your post "${post.title}" is now public.`,
+        postId: post.id,
+        read: false,
+        createdAt: Timestamp.now()
+      });
+      toast.success('Lost/Found post approved');
+      fetchLostFoundPosts();
+    } catch (error) {
+      toast.error('Failed to approve post');
+    }
+  };
+
+  const handleRejectLostFoundPost = async (post: any) => {
+    if (window.confirm('Reject this post?')) {
+      await updateDoc(doc(db, 'lost_and_found_posts', post.id), {
+        status: 'rejected',
+        updatedAt: Timestamp.now()
+      });
+      toast.success('Post rejected');
+      fetchLostFoundPosts();
+    }
   };
 
   const handleRejectHealthPost = async (post: any) => {
@@ -609,6 +660,15 @@ export default function Admin({ user }: Props) {
             <span>Health Posts</span>
           </button>
           <button 
+            onClick={() => setActiveTab('lostfound')}
+            className={`w-full p-6 flex items-center space-x-4 font-bold transition-all text-left rounded-3xl ${
+              activeTab === 'lostfound' ? 'bg-blue-600 text-white shadow-xl shadow-blue-200' : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-100'
+            }`}
+          >
+            <HelpCircle className="w-5 h-5" />
+            <span>Lost & Found</span>
+          </button>
+          <button 
             onClick={() => setActiveTab('users')}
             className={`w-full p-6 flex items-center space-x-4 font-bold transition-all text-left rounded-3xl ${
               activeTab === 'users' ? 'bg-orange-600 text-white shadow-xl shadow-orange-200' : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-100'
@@ -653,7 +713,7 @@ export default function Admin({ user }: Props) {
                     {statsError}
                   </div>
                 )}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
                   <div className="w-12 h-12 rounded-2xl bg-blue-100 text-blue-600 flex items-center justify-center mb-6">
                     <Users className="w-6 h-6" />
@@ -697,6 +757,18 @@ export default function Admin({ user }: Props) {
                     <span className="text-green-600">Pending: {stats?.pendingHealth || 0}</span>
                   </div>
                 </div>
+                <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 flex flex-col justify-between">
+                  <div>
+                  <div className="w-12 h-12 rounded-2xl bg-blue-100 text-blue-600 flex items-center justify-center mb-6">
+                    <HelpCircle className="w-6 h-6" />
+                  </div>
+                    <span className="text-sm font-black text-gray-400 uppercase tracking-widest mb-1 block">Lost & Found</span>
+                    <h3 className="text-4xl font-black text-gray-900 tracking-tight">{stats?.lostFoundCount || 0}</h3>
+                  </div>
+                  <div className="mt-4 pt-4 border-t border-gray-50 flex justify-between text-xs font-black uppercase tracking-widest">
+                    <span className="text-blue-600">Pending: {stats?.pendingLostFound || 0}</span>
+                  </div>
+                </div>
                 <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
                   <div className="w-12 h-12 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center mb-6">
                     <AlertTriangle className="w-6 h-6" />
@@ -704,6 +776,96 @@ export default function Admin({ user }: Props) {
                   <span className="text-sm font-black text-gray-400 uppercase tracking-widest mb-1 block">{t('admin.pendingReports')}</span>
                   <h3 className="text-4xl font-black text-gray-900 tracking-tight">{stats?.pendingReports || 0}</h3>
                 </div>
+                </div>
+              </motion.div>
+            )}
+
+            {activeTab === 'lostfound' && (
+              <motion.div 
+                key="lostfound"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden"
+              >
+                <div className="p-6 border-b flex items-center justify-between">
+                  <h3 className="text-xl font-bold text-gray-900">Manage Lost & Found Posts</h3>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-gray-50 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                        <th className="px-6 py-4">Title</th>
+                        <th className="px-6 py-4">Author</th>
+                        <th className="px-6 py-4">Type</th>
+                        <th className="px-6 py-4">Status</th>
+                        <th className="px-6 py-4 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {lostFoundPosts.map((post) => (
+                        <tr key={post.id} className="hover:bg-gray-50/50 transition-colors">
+                          <td className="px-6 py-4">
+                            <span className="font-bold text-gray-900 text-sm truncate max-w-[200px] block">{post.title}</span>
+                          </td>
+                          <td className="px-6 py-4 text-sm font-medium text-gray-500">
+                            <Link to={`/profile/${post.authorId}`} className="hover:text-orange-600 transition-colors">
+                              {post.authorName}
+                            </Link>
+                          </td>
+                          <td className="px-6 py-4 text-sm font-medium text-gray-500 capitalize">{post.postType}</td>
+                          <td className="px-6 py-4">
+                            <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                              post.status === 'active' ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-500'
+                            }`}>
+                              {post.status || 'pending'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            <div className="flex items-center justify-end space-x-2">
+                              {(post.status === 'pending' || !post.status) && (
+                                <>
+                                  <button 
+                                    onClick={() => handleApproveLostFoundPost(post)}
+                                    className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                                    title="Approve"
+                                  >
+                                    <CheckCircle2 className="w-5 h-5" />
+                                  </button>
+                                  <button 
+                                    onClick={() => handleRejectLostFoundPost(post)}
+                                    className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
+                                    title="Reject"
+                                  >
+                                    <Ban className="w-5 h-5" />
+                                  </button>
+                                </>
+                              )}
+                              <button 
+                                onClick={async () => {
+                                  if (window.confirm('Delete this post permanently?')) {
+                                    await deleteDoc(doc(db, 'lost_and_found_posts', post.id));
+                                    toast.success('Post deleted');
+                                    fetchLostFoundPosts();
+                                  }
+                                }}
+                                className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                title="Delete"
+                              >
+                                <Trash2 className="w-5 h-5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {lostFoundPosts.length === 0 && (
+                    <div className="p-20 text-center text-gray-400">
+                      <HelpCircle className="w-12 h-12 mx-auto mb-4 opacity-20" />
+                      <p className="font-bold">No lost & found posts found.</p>
+                    </div>
+                  )}
                 </div>
               </motion.div>
             )}

@@ -66,6 +66,26 @@ service cloud.firestore {
       }
     }
 
+    match /lost_and_found_posts/{postId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.resource.data.authorId == request.auth.uid;
+      allow update, delete: if request.auth != null && (
+        request.auth.uid == resource.data.authorId || isAdmin() ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes'])
+      );
+
+      match /comments/{commentId} {
+        allow read: if true;
+        allow create: if request.auth != null && request.resource.data.authorId == request.auth.uid;
+        allow update: if request.auth != null && (
+          request.auth.uid == resource.data.authorId ||
+          isAdmin() ||
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes'])
+        );
+        allow delete: if request.auth != null && (request.auth.uid == resource.data.authorId || isAdmin());
+      }
+    }
+
     // Chat rules
     match /chats/{chatId} {
       allow create: if request.auth != null && (

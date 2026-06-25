@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Helmet } from 'react-helmet-async';
-import { db, collection, query, where, orderBy, limit, onSnapshot, doc, auth } from '../firebase';
-import { Search, MapPin, ChevronRight, LayoutGrid, PawPrint, ShoppingBag, Tractor, AlertCircle, Heart, HeartPulse } from 'lucide-react';
+import { db, collection, query, where, orderBy, limit, onSnapshot, doc, auth, getDocs } from '../firebase';
+import { Search, MapPin, ChevronRight, LayoutGrid, PawPrint, ShoppingBag, Tractor, AlertCircle, Heart, HeartPulse, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link } from 'react-router-dom';
 import ListingCard from '../components/ListingCard';
@@ -25,6 +25,7 @@ const DEFAULT_HERO_IMAGES = [
 export default function Home({ initialCategory = 'all' }: { initialCategory?: string }) {
   const [listings, setListings] = useState<any[]>([]);
   const [couplingOffers, setCouplingOffers] = useState<any[]>([]);
+  const [lostFoundPosts, setLostFoundPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -95,6 +96,22 @@ export default function Home({ initialCategory = 'all' }: { initialCategory?: st
       // Client-side sort to avoid index requirements
       data.sort((a: any, b: any) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
       setCouplingOffers(data.filter(o => o.status === 'active'));
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const q = query(
+      collection(db, 'lost_and_found_posts'),
+      limit(4)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      let data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+      // Client-side sort to avoid index requirements
+      data.sort((a: any, b: any) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
+      setLostFoundPosts(data.filter(o => o.status === 'active'));
     });
 
     return () => unsubscribe();
@@ -201,14 +218,12 @@ export default function Home({ initialCategory = 'all' }: { initialCategory?: st
         translatedListings[l.id]?.targetLang !== i18n.language
       );
 
-      const couplingToTranslate = couplingOffers.filter(o => 
+      const itemsToTranslate = [...listingsToTranslate, ...couplingOffers, ...lostFoundPosts].filter(o => 
         (o.language || 'en') !== i18n.language && 
         translatedListings[o.id]?.targetLang !== i18n.language
       );
-
-      const allToTranslate = [...listingsToTranslate, ...couplingToTranslate];
-
-      for (const item of allToTranslate) {
+      
+      for (const item of itemsToTranslate) {
         if (!active) break;
         await handleTranslateListing(item);
       }
@@ -216,7 +231,7 @@ export default function Home({ initialCategory = 'all' }: { initialCategory?: st
 
     if (filteredListings.length > 0 || couplingOffers.length > 0) translateAll();
     return () => { active = false; };
-  }, [filteredListings, couplingOffers, i18n.language]);
+  }, [filteredListings, couplingOffers, lostFoundPosts, i18n.language]);
 
   return (
     <div className="space-y-12">
@@ -410,7 +425,7 @@ export default function Home({ initialCategory = 'all' }: { initialCategory?: st
             </div>
           ) : (
             <AnimatePresence mode="wait">
-              {searchTerm.trim() || category !== 'all' ? (
+              {searchTerm.trim() || location.trim() || category !== 'all' ? (
                 <motion.div
                   key="search-results"
                   initial={{ opacity: 0 }}
@@ -443,6 +458,43 @@ export default function Home({ initialCategory = 'all' }: { initialCategory?: st
                   exit={{ opacity: 0 }}
                   className="space-y-12"
                 >
+                  {lostFoundPosts.length > 0 && (
+                    <section>
+                      <div className="flex items-center justify-between mb-6">
+                        <h3 className="text-xl font-black text-gray-900 tracking-tight flex items-center">
+                          <AlertTriangle className="w-5 h-5 text-blue-600 mr-3" />
+                          {t('nav.lostAndFound')}
+                        </h3>
+                        <Link to="/lost-and-found" className="text-orange-600 font-bold text-xs hover:underline">
+                          {t('home.viewAll')}
+                        </Link>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {lostFoundPosts.map(post => (
+                          <Link to={`/lost-and-found`} key={post.id} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex items-center space-x-4 hover:shadow-md hover:border-blue-200 transition-all group">
+                            <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 border border-gray-50">
+                              <img src={post.images?.[0]} className="w-full h-full object-cover" alt={post.title} />
+                            </div>
+                            <div className="flex-grow">
+                              <div className="flex items-center justify-between">
+                                <h4 className="font-bold text-gray-900 group-hover:text-blue-600 transition-colors line-clamp-1">
+                                  {translatedListings[post.id]?.targetLang === i18n.language 
+                                    ? translatedListings[post.id].title 
+                                    : post.title}
+                                </h4>
+                                <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest ${
+                                  post.postType === 'lost' ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'
+                                }`}>
+                                  {post.postType}
+                                </span>
+                              </div>
+                              <p className="text-xs text-gray-500 font-medium mt-1">{post.location}</p>
+                            </div>
+                          </Link>
+                        ))}
+                      </div>
+                    </section>
+                  )}
                   {couplingOffers.length > 0 && (
                     <section>
                       <div className="flex items-center justify-between mb-6">

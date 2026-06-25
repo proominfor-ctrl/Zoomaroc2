@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { MapPin, Tag, Clock, Heart, ShoppingBag, Tractor, PawPrint } from 'lucide-react';
+import { MapPin, Tag, Clock, Heart, ShoppingBag, Tractor, PawPrint, AlertTriangle } from 'lucide-react';
 import { motion } from 'motion/react';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -12,6 +12,8 @@ const CATEGORY_ICONS: { [key: string]: any } = {
   livestock: Tractor,
   adoption: Heart,
   accessory: ShoppingBag,
+  lost: AlertTriangle,
+  found: AlertTriangle,
 };
 
 export default function ListingCard({ listing }: Props) {
@@ -40,7 +42,9 @@ export default function ListingCard({ listing }: Props) {
         <div className="absolute inset-0 bg-gradient-to-t from-black/15 via-transparent to-transparent pointer-events-none" />
         <div className="absolute top-4 left-4">
           <span className={`bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-black uppercase tracking-widest shadow-sm flex items-center ${
-            listing.animalType === 'adoption' ? 'text-[#006d2c]' : 'text-orange-600'
+            listing.animalType === 'adoption' ? 'text-[#006d2c]' : 
+            listing.animalType === 'lost' ? 'text-red-600' :
+            listing.animalType === 'found' ? 'text-blue-600' : 'text-orange-600'
           }`}>
             <Icon className="w-3 h-3 mr-1.5" />
             {listing.animalType}

@@ -10,7 +10,7 @@ type Env = {
   SUPABASE_STORAGE_BUCKET?: string;
 };
 
-const allowedFolders = new Set(["listings", "profiles", "hero", "health", "coupling", "coupling_res"]);
+const allowedFolders = new Set(["listings", "profiles", "hero", "health", "coupling", "coupling_res", "lost-found"]);
 const allowedMimeTypes = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 
 function jsonResponse(body: unknown, status = 200) {

@@ -6,7 +6,7 @@ import './i18n';
 import { onAuthStateChanged, User, db, collection, query, where, onSnapshot, doc, updateDoc } from './firebase';
 import { auth } from './firebase';
 import { Toaster, toast } from 'sonner';
-import { Mail, MapPin, Facebook, Instagram, Twitter, MessageSquare, PlusCircle, Languages, Heart, Stethoscope } from 'lucide-react';
+import { Mail, MapPin, Facebook, Instagram, Twitter, MessageSquare, PlusCircle, Languages, Heart, Stethoscope, AlertTriangle } from 'lucide-react';
 
 // Pages
 import Home from './pages/Home';
@@ -26,6 +26,7 @@ const Notifications = lazy(() => import('./pages/Notifications'));
 const Coupling = lazy(() => import('./pages/Coupling'));
 const CreateCoupling = lazy(() => import('./CreateCoupling'));
 const CouplingDetail = lazy(() => import('./pages/CouplingDetail'));
+const LostAndFound = lazy(() => import('./pages/LostAndFound'));
 
 // Components
 import Navbar from './components/Navbar';
@@ -154,6 +155,7 @@ export default function App() {
                 <Route path="/coupling" element={<Coupling />} />
                 <Route path="/coupling/create" element={!authReady ? <PageLoader /> : user ? <CreateCoupling /> : <Navigate to="/login" />} />
                 <Route path="/coupling/:id" element={<CouplingDetail user={user} />} />
+                <Route path="/lost-and-found" element={<LostAndFound user={user} />} />
               </Routes>
             </Suspense>
           </main>
@@ -171,7 +173,7 @@ export default function App() {
                     {t('footer.description')}
                   </p>
                   <div className="flex items-center space-x-4">
-                    <a href="#" className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400 hover:text-orange-600 hover:bg-orange-50 transition-all">
+                    <a href="https://www.facebook.com/profile.php?id=61591265847297" target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400 hover:text-orange-600 hover:bg-orange-50 transition-all">
                       <Facebook className="w-5 h-5" />
                     </a>
                     <a href="#" className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400 hover:text-orange-600 hover:bg-orange-50 transition-all">
@@ -209,6 +211,11 @@ export default function App() {
                 <div>
                   <h4 className="text-sm font-black text-gray-900 uppercase tracking-widest mb-6">{t('footer.quickLinks')}</h4>
                   <ul className="space-y-4">
+                    <li>
+                      <Link to="/lost-and-found" className="text-gray-500 hover:text-blue-600 font-bold text-sm transition-colors flex items-center rtl:space-x-reverse">
+                        <AlertTriangle className="w-4 h-4 mr-2 rtl:ml-2 rtl:mr-0 text-blue-500" /> {t('nav.lostAndFound')}
+                      </Link>
+                    </li>
                     <li>
                       <Link to="/create" className="text-gray-500 hover:text-orange-600 font-bold text-sm transition-colors flex items-center rtl:space-x-reverse">
                         <PlusCircle className="w-4 h-4 mr-2 rtl:ml-2 rtl:mr-0" /> {t('nav.postAd')}

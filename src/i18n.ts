@@ -17,7 +17,8 @@ const resources = {
         "adminSupport": "Admin Support",
         "health": "Health & Tips",
         "coupling": "Coupling",
-        "notifications": "Notifications"
+        "notifications": "Notifications",
+        "lostAndFound": "Lost & Found"
       },
       "health": {
         "title": "Animal Health & Community",
@@ -60,6 +61,18 @@ const resources = {
         "requirements": "Requirements / Preferences",
         "viewResponses": "View Responses ({{count}})",
         "pendingApproval": "Pending Review"
+      },
+      "lostAndFound": {
+        "title": "Lost & Found Pets",
+        "subtitle": "Help reunite lost pets with their families.",
+        "searchPlaceholder": "Search by animal type, location...",
+        "createPost": "Report a Pet",
+        "postSuccess": "Post submitted for review successfully!",
+        "postTitle": "Title of your post (e.g. Lost Golden Retriever)",
+        "postContent": "Describe the animal, last seen location, date, and contact info...",
+        "location": "Last Seen Location (City)",
+        "status": { "lost": "Lost", "found": "Found" },
+        "postType": "Post Type"
       },
       "footer": {
         "description": "Morocco's premier destination for buying and selling animals. From pets to livestock, find your perfect companion with confidence and security.",
@@ -172,7 +185,7 @@ const resources = {
         "listingTitle": "Listing Title",
         "description": "Description",
         "category": "Category",
-        "price": "Price (MAD)",
+        "price": "Price",
         "aiAssist": "AI Assist",
         "aiGenerating": "Generating...",
         "breed": "Breed / Type",
@@ -400,7 +413,8 @@ const resources = {
         "adminSupport": "Support Admin",
         "health": "Santé & Conseils",
         "coupling": "Accouplement",
-        "notifications": "Notifications"
+        "notifications": "Notifications",
+        "lostAndFound": "Perdu & Trouvé"
       },
       "health": {
         "title": "Santé Animale et Communauté",
@@ -443,6 +457,18 @@ const resources = {
         "requirements": "Exigences / Préférences",
         "viewResponses": "Voir les réponses ({{count}})",
         "pendingApproval": "Validation en cours"
+      },
+      "lostAndFound": {
+        "title": "Animaux Perdus & Trouvés",
+        "subtitle": "Aidez à réunir les animaux perdus avec leurs familles.",
+        "searchPlaceholder": "Rechercher par type, lieu...",
+        "createPost": "Signaler un Animal",
+        "postSuccess": "Annonce envoyée pour validation !",
+        "postTitle": "Titre (ex: Golden Retriever perdu)",
+        "postContent": "Décrivez l'animal, lieu, date, et contact...",
+        "location": "Dernier lieu connu (Ville)",
+        "status": { "lost": "Perdu", "found": "Trouvé" },
+        "postType": "Type de signalement"
       },
       "footer": {
         "description": "La première destination au Maroc pour l'achat et la vente d'animaux. Des animaux de compagnie au bétail, trouvez votre compagnon idéal en toute confiance.",
@@ -555,7 +581,7 @@ const resources = {
         "listingTitle": "Titre de l'annonce",
         "description": "Description",
         "category": "Catégorie",
-        "price": "Prix (MAD)",
+        "price": "Prix",
         "aiAssist": "Aide IA",
         "aiGenerating": "Génération...",
         "breed": "Race / Type",
@@ -783,7 +809,8 @@ const resources = {
         "adminSupport": "الدعم الفني",
         "health": "الصحة والنصائح",
         "coupling": "تزاوج",
-        "notifications": "الإشعارات"
+        "notifications": "الإشعارات",
+        "lostAndFound": "مفقودات"
       },
       "health": {
         "title": "صحة الحيوان والمجتمع",
@@ -826,6 +853,18 @@ const resources = {
         "requirements": "المتطلبات / التفضيلات",
         "viewResponses": "عرض الردود ({{count}})",
         "pendingApproval": "في انتظار المراجعة"
+      },
+      "lostAndFound": {
+        "title": "حيوانات مفقودة ومعثور عليها",
+        "subtitle": "ساعد في لم شمل الحيوانات الأليفة المفقودة مع أسرهم.",
+        "searchPlaceholder": "ابحث حسب نوع الحيوان، الموقع...",
+        "createPost": "بلغ عن حيوان",
+        "postSuccess": "تم إرسال البلاغ للمراجعة بنجاح!",
+        "postTitle": "عنوان البلاغ (مثال: كلب جولدن ريتريفر مفقود)",
+        "postContent": "صف الحيوان، آخر مكان شوهد فيه، التاريخ، ومعلومات الاتصال...",
+        "location": "آخر مكان (المدينة)",
+        "status": { "lost": "مفقود", "found": "تم العثور عليه" },
+        "postType": "نوع البلاغ"
       },
       "footer": {
         "description": "الوجهة الأولى في المغرب لبيع وشراء الحيوانات. من الأليفة إلى المواشي، اعثر على رفيقك المثالي بكل ثقة وأمان.",
@@ -938,7 +977,7 @@ const resources = {
         "listingTitle": "عنوان الإعلان",
         "description": "الوصف",
         "category": "الفئة",
-        "price": "السعر (درهم)",
+        "price": "السعر",
         "aiAssist": "مساعد الذكاء الاصطناعي",
         "aiGenerating": "جاري التوليد...",
         "breed": "السلالة / النوع",

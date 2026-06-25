@@ -56,8 +56,8 @@ const listingSchema = z.object({
   location: z.string().min(2, 'Location is required'),
   contactPreference: z.enum(['chat', 'phone', 'email']),
 }).superRefine((data, ctx) => {
-  // Require petType if animalType is 'pet'
-  if (data.animalType === 'pet' && !data.petType) {
+  // Require petType if animalType is 'pet' or 'adoption'
+  if ((data.animalType === 'pet' || data.animalType === 'adoption') && !data.petType) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       message: "Pet type is required",
@@ -427,7 +427,7 @@ export default function CreateListing({ user }: Props) {
             </select>
           </div>
 
-          {selectedAnimalType === 'pet' && (
+          {(selectedAnimalType === 'pet' || selectedAnimalType === 'adoption') && (
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-widest">{t('createListing.petType')}</label>
               <select 
@@ -465,7 +465,7 @@ export default function CreateListing({ user }: Props) {
             <>
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-widest">{t('createListing.breed')}</label>
-                {selectedAnimalType === 'pet' && selectedPetType === 'dog' ? (
+                {(selectedAnimalType === 'pet' || selectedAnimalType === 'adoption') && selectedPetType === 'dog' ? (
                   <div className="space-y-4">
                     <select 
                       {...register('breed')}

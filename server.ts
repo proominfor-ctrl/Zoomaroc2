@@ -71,7 +71,7 @@ function sanitizeStorageFolder(folder: unknown) {
     .filter(Boolean)
     .join("/");
 
-  const allowedFolders = new Set(["listings", "profiles", "hero", "health", "coupling", "coupling_res"]);
+  const allowedFolders = new Set(["listings", "profiles", "hero", "health", "coupling", "coupling_res", "lost-found"]);
   return allowedFolders.has(sanitizedFolder) ? sanitizedFolder : null;
 }
 

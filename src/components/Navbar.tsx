@@ -1,7 +1,7 @@
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { User, signOut, auth, db, doc, getDoc, collection, query, where, orderBy, limit, onSnapshot, updateDoc } from '../firebase';
-import { LogOut, User as UserIcon, PlusCircle, MessageSquare, Shield, Search, Menu, X, Bell, Heart, Home, Stethoscope } from 'lucide-react';
+import { LogOut, User as UserIcon, PlusCircle, MessageSquare, Shield, Search, Menu, X, Bell, Heart, Home, Stethoscope, AlertTriangle } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import Logo from './Logo';
@@ -22,6 +22,29 @@ export default function Navbar({ user, unreadCount = 0, notificationsCount = 0 }
   const [showNotifications, setShowNotifications] = useState(false);
   const { t } = useTranslation();
   const location = useLocation();
+
+  const navItems = [
+    {
+      to: '/',
+      label: t('nav.home'),
+      icon: Home
+    },
+    {
+      to: '/health',
+      label: t('nav.health'),
+      icon: Stethoscope
+    },
+    {
+      to: '/coupling',
+      label: t('nav.coupling'),
+      icon: Heart
+    },
+    {
+      to: '/lost-and-found',
+      label: t('nav.lostAndFound'),
+      icon: AlertTriangle
+    }
+  ];
 
   // Close notifications dropdown when navigating to a new page
   useEffect(() => {
@@ -94,18 +117,12 @@ export default function Navbar({ user, unreadCount = 0, notificationsCount = 0 }
 
           {/* Desktop Nav */}
           <div className="hidden md:flex items-center space-x-8">
-            <Link to="/" className="nav-link text-[var(--navy-900)] font-medium flex items-center">
-              <Home className="w-4 h-4 mr-1.5" />
-              {t('nav.home')}
-            </Link>
-            <Link to="/health" className="nav-link text-[var(--navy-900)] font-medium flex items-center">
-              <Stethoscope className="w-4 h-4 mr-1.5" />
-              {t('nav.health')}
-            </Link>
-            <Link to="/coupling" className="nav-link text-[var(--navy-900)] font-medium flex items-center">
-              <Heart className="w-4 h-4 mr-1.5" />
-              {t('nav.coupling')}
-            </Link>
+            {navItems.map(item => (
+              <NavLink key={item.to} to={item.to} className={({ isActive }) => `nav-link text-[var(--navy-900)] font-medium flex items-center ${isActive ? 'text-orange-600' : ''}`}>
+                <item.icon className="w-4 h-4 mr-1.5" />
+                {item.label}
+              </NavLink>
+            ))}
             {user && (
               <>
                 <Link to="/chat" className="text-gray-600 hover:text-orange-600 font-medium transition-colors flex items-center relative">
@@ -246,18 +263,12 @@ export default function Navbar({ user, unreadCount = 0, notificationsCount = 0 }
             className="md:hidden bg-white border-t overflow-hidden"
           >
             <div className="px-4 py-6 space-y-4">
-              <Link to="/" onClick={() => setIsMenuOpen(false)} className="flex items-center text-lg font-medium text-gray-900">
-                <Home className="w-5 h-5 mr-3 text-gray-400" />
-                {t('nav.home')}
-              </Link>
-              <Link to="/health" onClick={() => setIsMenuOpen(false)} className="flex items-center text-lg font-medium text-gray-900">
-                <Stethoscope className="w-5 h-5 mr-3 text-green-500" />
-                {t('nav.health')}
-              </Link>
-              <Link to="/coupling" onClick={() => setIsMenuOpen(false)} className="flex items-center text-lg font-medium text-gray-900">
-                <Heart className="w-5 h-5 mr-3 text-red-500" />
-                {t('nav.coupling')}
-              </Link>
+              {navItems.map(item => (
+                <Link key={item.to} to={item.to} onClick={() => setIsMenuOpen(false)} className="flex items-center text-lg font-medium text-gray-900">
+                  <item.icon className="w-5 h-5 mr-3 text-gray-400" />
+                  {item.label}
+                </Link>
+              ))}
               {user ? (
                 <>
                   <Link to="/chat" onClick={() => setIsMenuOpen(false)} className="flex items-center justify-between text-lg font-medium text-gray-900">

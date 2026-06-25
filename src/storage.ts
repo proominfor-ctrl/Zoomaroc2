@@ -9,7 +9,7 @@ import { auth } from './firebase';
  * @param folder The destination folder in the Supabase bucket (e.g., 'listings', 'profiles').
  * @returns An object containing the public URL of the uploaded image.
  */
-export async function uploadImage(file: File | Blob, originalName: string, folder: 'listings' | 'profiles' | 'hero' | 'health' | 'coupling' | 'coupling_res' | string): Promise<string> {
+export async function uploadImage(file: File | Blob, originalName: string, folder: 'listings' | 'profiles' | 'hero' | 'health' | 'coupling' | 'coupling_res' | 'lost-found' | string): Promise<string> {
   const user = auth.currentUser;
   if (!user) {
     throw new Error('Authentication required to upload files.');
