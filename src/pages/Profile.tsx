@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { db, doc, getDoc, updateDoc, setDoc, auth, User, collection, query, where, limit, onSnapshot, Timestamp, updateProfile } from '../firebase';
+import { db, doc, getDoc, updateDoc, setDoc, auth, User, collection, query, where, limit, onSnapshot, Timestamp, updateProfile, verifyBeforeUpdateEmail } from '../firebase';
 import { User as UserIcon, Mail, Phone, MapPin, Shield, Settings, LayoutGrid, Heart, LogOut, Camera, Save, CheckCircle2, MessageCircle, FileText, BadgeCheck, Star, Stethoscope, Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { formatDistanceToNow } from 'date-fns';
@@ -40,9 +40,35 @@ export default function Profile({ user }: Props) {
     showPhone: true,
     showLocation: true
   });
+  const [newEmail, setNewEmail] = useState('');
+  const [isChangingEmail, setIsChangingEmail] = useState(false);
 
   useEffect(() => {
-    if (targetUserId) fetchProfile();
+    if (!targetUserId) return;
+
+    const docRef = doc(db, 'users', targetUserId);
+    const unsubscribe = onSnapshot(docRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.data();
+        setProfile(data);
+        setDisplayName(data.displayName || '');
+        setPhoneNumber(data.phoneNumber || '');
+        setLocation(data.location || '');
+        setBio(data.bio || '');
+        setWhatsapp(data.whatsapp || '');
+        setPrivacySettings(data.privacySettings || {
+          showEmail: false,
+          showPhone: true,
+          showLocation: true
+        });
+      }
+      setLoading(false);
+    }, (error) => {
+      console.error('Error fetching profile:', error);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
   }, [targetUserId]);
 
   useEffect(() => {
@@ -125,50 +151,6 @@ export default function Profile({ user }: Props) {
     }
   }, [activeTab, profile?.favorites]);
 
-  const fetchFavorites = async () => {
-    try {
-      // Firestore 'in' queries are limited to 10 IDs. 
-      // For a robust system, we fetch the first 10 favorites.
-      const favoriteIds = profile.favorites.slice(0, 10);
-      const favs: any[] = [];
-      
-      for (const id of favoriteIds) {
-        const docRef = doc(db, 'listings', id);
-        const snap = await getDoc(docRef);
-        if (snap.exists()) favs.push({ id: snap.id, ...snap.data() });
-      }
-      setFavorites(favs);
-    } catch (error) {
-      console.error('Error fetching favorites:', error);
-    }
-  };
-
-  const fetchProfile = async () => {
-    if (!targetUserId) return;
-    try {
-      const docRef = doc(db, 'users', targetUserId);
-      const snapshot = await getDoc(docRef);
-      if (snapshot.exists()) {
-        const data = snapshot.data();
-        setProfile(data);
-        setDisplayName(data.displayName || '');
-        setPhoneNumber(data.phoneNumber || '');
-        setLocation(data.location || '');
-        setBio(data.bio || '');
-        setWhatsapp(data.whatsapp || '');
-        setPrivacySettings(data.privacySettings || {
-          showEmail: false,
-          showPhone: true,
-          showLocation: true
-        });
-      }
-    } catch (error) {
-      console.error('Error fetching profile:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isOwnProfile || !user) return;
@@ -190,11 +172,39 @@ export default function Profile({ user }: Props) {
         updatedAt: Timestamp.now()
       });
       toast.success('Profile updated successfully!');
-      fetchProfile();
     } catch (error: any) {
       toast.error(error.message || 'Failed to update profile');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleEmailChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !newEmail || newEmail === user.email) {
+      toast.info("Please enter a new, different email address.");
+      return;
+    }
+
+    setIsChangingEmail(true);
+    try {
+      await verifyBeforeUpdateEmail(user, newEmail);
+      toast.success("Verification email sent!", {
+        description: `Please check your new email inbox at ${newEmail} to complete the change.`,
+        duration: 8000,
+      });
+      setNewEmail('');
+    } catch (error: any) {
+      let errorMessage = 'Failed to start email change process.';
+      if (error.code === 'auth/email-already-in-use') {
+        errorMessage = 'This email is already in use by another account.';
+      } else if (error.code === 'auth/requires-recent-login') {
+        errorMessage = 'This is a sensitive action. Please log out and log back in before changing your email.';
+      }
+      toast.error(errorMessage);
+      console.error("Email change error:", error);
+    } finally {
+      setIsChangingEmail(false);
     }
   };
 
@@ -255,7 +265,6 @@ export default function Profile({ user }: Props) {
       });
 
       toast.success('Profile photo updated successfully!');
-      fetchProfile();
     } catch (error: any) {
       console.error('❌ Photo upload error:', error);
       const errorMessage = error.message || '';
@@ -607,6 +616,34 @@ export default function Profile({ user }: Props) {
                     </div>
                   </div>
 
+                  {/* Email Change */}
+                  <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 space-y-6">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <Mail className="w-5 h-5 text-orange-600" />
+                      <h3 className="text-xl font-bold text-gray-900">Change Email</h3>
+                    </div>
+                    <p className="text-sm text-gray-500 font-medium">
+                      Your current email is <span className="font-bold text-gray-700">{user?.email}</span>.
+                      To change it, enter a new email below. We will send a verification link to the new address.
+                    </p>
+                    <div className="flex items-center space-x-4">
+                      <input
+                        type="email"
+                        placeholder="Enter new email address"
+                        value={newEmail}
+                        onChange={(e) => setNewEmail(e.target.value)}
+                        className="flex-grow px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none font-medium"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleEmailChange}
+                        disabled={isChangingEmail || !newEmail}
+                        className="bg-orange-600 hover:bg-orange-700 text-white px-6 py-4 rounded-2xl font-black text-sm transition-all disabled:opacity-50"
+                      >
+                        {isChangingEmail ? 'Sending...' : 'Verify New Email'}
+                      </button>
+                    </div>
+                  </div>
                   {/* Privacy Settings */}
                   <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 space-y-6">
                     <div className="flex items-center space-x-2 mb-2">

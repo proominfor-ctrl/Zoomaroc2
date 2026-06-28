@@ -1,9 +1,9 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
 import { lazy, Suspense, useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { HelmetProvider } from 'react-helmet-async';
+import { HelmetProvider, Helmet } from 'react-helmet-async';
 import './i18n';
-import { onAuthStateChanged, User, db, collection, query, where, onSnapshot } from './firebase';
+import { onAuthStateChanged, User, db, collection, query, where, onSnapshot, doc, getDoc, updateDoc } from './firebase';
 import { auth } from './firebase';
 import { Toaster, toast } from 'sonner';
 import { Mail, MapPin, Facebook, Instagram, Twitter, MessageSquare, PlusCircle, Languages, Heart, Stethoscope, AlertTriangle } from 'lucide-react';
@@ -71,8 +71,24 @@ export default function App() {
   }, [i18n.language]);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setUser(user);
+      if (user) {
+        // Sync Auth changes (like email verification/update) to Firestore
+        const userRef = doc(db, 'users', user.uid);
+        const userSnap = await getDoc(userRef);
+        if (userSnap.exists()) {
+          const firestoreUser = userSnap.data();
+          const updates: { [key: string]: any } = {};
+          if (user.email !== firestoreUser.email) {
+            updates.email = user.email;
+          }
+          if (Object.keys(updates).length > 0) {
+            await updateDoc(userRef, updates);
+            console.log('User profile synced with auth changes:', updates);
+          }
+        }
+      }
       setAuthReady(true);
     });
     return () => unsubscribe();

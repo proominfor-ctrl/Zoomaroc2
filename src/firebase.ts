@@ -11,7 +11,8 @@ import {
   signInWithEmailAndPassword,
   sendEmailVerification,
   sendPasswordResetEmail,
-  RecaptchaVerifier,
+  verifyBeforeUpdateEmail,
+  RecaptchaVerifier, 
   PhoneAuthProvider
 } from 'firebase/auth';
 import { getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, addDoc, query, where, orderBy, limit, onSnapshot, Timestamp, getDocFromServer, increment, arrayUnion, arrayRemove, getCountFromServer, writeBatch } from 'firebase/firestore';
@@ -106,6 +107,7 @@ export {
   signInWithEmailAndPassword,
   sendEmailVerification,
   sendPasswordResetEmail,
+  verifyBeforeUpdateEmail,
   RecaptchaVerifier,
   PhoneAuthProvider,
   collection, 

@@ -75,7 +75,7 @@ const resources = {
         "postType": "Post Type"
       },
       "footer": {
-        "description": "Morocco's premier destination for buying and selling animals. From pets to livestock, find your perfect companion with confidence and security.",
+        "description": "Morocco's premier animal community and marketplace. From pets to livestock, find your perfect companion, share advice, and connect with other animal lovers.",
         "browse": "Browse",
         "quickLinks": "Quick Links",
         "support": "Support",
@@ -87,9 +87,9 @@ const resources = {
       },
       "categories": {
         "all": "All",
-        "pets": "Pets for sell",
+        "pets": "Pets for Sale",
         "livestock": "Livestock",
-        "adoption": "Pet for adoption (free)",
+        "adoption": "Adoption (Free)",
         "accessories": "Accessories",
         "pet": "Pet for sell",
         "accessory": "Accessories"
@@ -471,7 +471,7 @@ const resources = {
         "postType": "Type de signalement"
       },
       "footer": {
-        "description": "La première destination au Maroc pour l'achat et la vente d'animaux. Des animaux de compagnie au bétail, trouvez votre compagnon idéal en toute confiance.",
+        "description": "La première communauté et place de marché animale du Maroc. Des animaux de compagnie au bétail, trouvez votre compagnon idéal, partagez des conseils et connectez-vous avec d'autres passionnés d'animaux.",
         "browse": "Parcourir",
         "quickLinks": "Liens Rapides",
         "support": "Support",
@@ -483,9 +483,9 @@ const resources = {
       },
       "categories": {
         "all": "Tout",
-        "pets": "Animaux de compagnie à vendre",
+        "pets": "Animaux à Vendre",
         "livestock": "Bétail",
-        "adoption": "Adoption (Gratuit)",
+        "adoption": "Adoption",
         "accessories": "Accessoires",
         "pet": "Animal à vendre",
         "accessory": "Accessoires"
@@ -867,7 +867,7 @@ const resources = {
         "postType": "نوع البلاغ"
       },
       "footer": {
-        "description": "الوجهة الأولى في المغرب لبيع وشراء الحيوانات. من الأليفة إلى المواشي، اعثر على رفيقك المثالي بكل ثقة وأمان.",
+        "description": "مجتمع وسوق الحيوانات الأول في المغرب. من الحيوانات الأليفة إلى المواشي، اعثر على رفيقك المثالي، شارك النصائح، وتواصل مع محبي الحيوانات الآخرين.",
         "browse": "تصفح",
         "quickLinks": "روابط سريعة",
         "support": "الدعم",
@@ -879,9 +879,9 @@ const resources = {
       },
       "categories": {
         "all": "الكل",
-        "pets": "حيوانات أليفة للبيع",
+        "pets": "حيوانات للبيع",
         "livestock": "مواشي",
-        "adoption": "تبني (مجاني)",
+        "adoption": "للتبني",
         "accessories": "إكسسوارات",
         "pet": "حيوان للبيع",
         "accessory": "إكسسوارات"
