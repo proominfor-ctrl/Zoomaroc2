@@ -113,7 +113,10 @@ export default function CouplingDetail({ user }: { user: any }) {
       setTranslatedLang(i18n.language);
       setShowOriginal(false);
       toast.success('Offer translated');
-    } catch (error) {
+    } catch (error: any) {
+      if (error.message.includes('Failed to fetch')) {
+        toast.info('Translation service may be blocked by your browser extensions.');
+      }
       console.error('Translation error:', error);
       toast.error('Translation failed');
     } finally {

@@ -271,7 +271,10 @@ export default function ListingDetail({ user }: { user: any }) {
       setTranslatedLang(i18n.language);
       setShowOriginal(false);
       toast.success('Listing translated');
-    } catch (error) {
+    } catch (error: any) {
+      if (error.message.includes('Failed to fetch')) {
+        toast.info('Translation service may be blocked by your browser extensions.');
+      }
       toast.error('Translation failed');
     } finally {
       setIsTranslating(false);

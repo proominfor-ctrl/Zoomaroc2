@@ -246,7 +246,10 @@ export default function HealthDetail({ user }: { user: any }) {
       setTranslatedLang(i18n.language);
       setShowOriginal(false);
       toast.success('Content translated');
-    } catch (error) {
+    } catch (error: any) {
+      if (error.message.includes('Failed to fetch')) {
+        toast.info('Translation service may be blocked by your browser extensions.');
+      }
       console.error("Translation error:", error);
       toast.error('Translation failed');
     } finally {

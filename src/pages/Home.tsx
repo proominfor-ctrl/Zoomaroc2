@@ -153,13 +153,17 @@ export default function Home({ initialCategory = 'all' }: { initialCategory?: st
       const sourceText = listing.title || listing.petName;
       if (!sourceText) return;
 
-      const tTitle = await fetchTranslation(sourceText, i18n.language);
-      setTranslatedListings(prev => ({ 
-        ...prev, 
-        [listing.id]: { title: tTitle, targetLang: i18n.language } 
-      }));
+      try {
+        const tTitle = await fetchTranslation(sourceText, i18n.language);
+        setTranslatedListings(prev => ({ 
+          ...prev, 
+          [listing.id]: { title: tTitle, targetLang: i18n.language } 
+        }));
+      } catch (error) {
+        console.warn('Home translation failed for listing (likely blocked by client):', listing.id, error);
+      }
     } catch (error) {
-      console.error('Home translation failed for listing:', listing.id, error);
+      console.error('Outer translation handling failed:', error);
     }
   };
 
