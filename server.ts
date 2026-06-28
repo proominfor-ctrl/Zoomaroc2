@@ -372,6 +372,62 @@ async function startServer() {
     }
   });
 
+  // Block User from Chat
+  app.post("/api/users/:userId/block", requireAuth, async (req, res) => {
+    const { userId: targetUserId } = req.params;
+    const currentUser = (req as any).authUser;
+
+    if (currentUser.uid === targetUserId) {
+      return res.status(400).json({ error: "You cannot block yourself." });
+    }
+
+    try {
+      const userRef = db.collection('users').doc(currentUser.uid);
+      await userRef.update({
+        blockedUsers: admin.firestore.FieldValue.arrayUnion(targetUserId)
+      });
+      res.status(200).json({ message: "User blocked successfully." });
+    } catch (error: any) {
+      console.error(`Failed to block user ${targetUserId}:`, error);
+      res.status(500).json({ error: error.message || "Failed to block user." });
+    }
+  });
+
+  // Report User from Chat
+  app.post("/api/users/report", requireAuth, async (req, res) => {
+    const { reportedUserId, reason, chatId } = req.body;
+    const currentUser = (req as any).authUser;
+
+    if (!reportedUserId || !reason) {
+      return res.status(400).json({ error: "Reported user ID and reason are required." });
+    }
+
+    if (currentUser.uid === reportedUserId) {
+      return res.status(400).json({ error: "You cannot report yourself." });
+    }
+
+    try {
+      const reportedUserSnap = await db.collection('users').doc(reportedUserId).get();
+
+      await db.collection('reports').add({
+        type: 'user_report',
+        reportedUserId: reportedUserId,
+        reportedUserName: reportedUserSnap.data()?.displayName || 'Unknown User',
+        reportedBy: currentUser.uid,
+        reportedByName: currentUser.name || 'Anonymous',
+        reason: reason,
+        chatId: chatId || null,
+        status: 'pending',
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+
+      res.status(200).json({ message: "User reported successfully. Our team will review it." });
+    } catch (error: any) {
+      console.error(`Failed to report user ${reportedUserId}:`, error);
+      res.status(500).json({ error: error.message || "Failed to report user." });
+    }
+  });
+
   // Socket.io for Real-time Chat
   io.on("connection", (socket) => {
     console.log("A user connected:", socket.id);

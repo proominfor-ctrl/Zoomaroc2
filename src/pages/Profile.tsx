@@ -175,6 +175,11 @@ export default function Profile({ user }: Props) {
     setSaving(true);
     try {
       const docRef = doc(db, 'users', user.uid);
+      // Update Firebase Auth profile
+      if (auth.currentUser && auth.currentUser.displayName !== displayName) {
+        await updateProfile(auth.currentUser, { displayName });
+      }
+      // Update Firestore document
       await updateDoc(docRef, {
         displayName,
         phoneNumber,

@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { db, collection, query, where, orderBy, onSnapshot, addDoc, Timestamp, User, doc, getDoc, updateDoc, limit, increment, setDoc } from '../firebase';
-import { Send, User as UserIcon, ChevronLeft, MoreVertical, Search, MessageSquare, Clock, Star, X } from 'lucide-react';
+import { db, collection, query, where, orderBy, onSnapshot, addDoc, Timestamp, User, doc, getDoc, updateDoc, limit, arrayUnion, setDoc } from '../firebase';
+import { Send, User as UserIcon, ChevronLeft, MoreVertical, Search, MessageSquare, Clock, Star, X, Trash2, ShieldAlert, Ban } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
@@ -22,6 +22,9 @@ export default function Chat({ user }: Props) {
   const [recipientProfile, setRecipientProfile] = useState<any>(null);
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [selectedRating, setSelectedRating] = useState(5);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportReason, setReportReason] = useState('');
   const [isSubmittingRating, setIsSubmittingRating] = useState(false);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const { t } = useTranslation();
@@ -38,8 +41,11 @@ export default function Chat({ user }: Props) {
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
-        const chatData = snapshot.docs
-          .map(doc => ({ id: doc.id, ...doc.data() }))
+        const allChats = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        // Client-side filtering for deleted chats
+        const visibleChats = allChats.filter(chat => !(chat.deletedFor || []).includes(user.uid));
+
+        const chatData = visibleChats
           .sort((a: any, b: any) => {
             const aTime = a.lastMessageAt?.toMillis?.() || 0;
             const bTime = b.lastMessageAt?.toMillis?.() || 0;
@@ -196,6 +202,81 @@ export default function Chat({ user }: Props) {
     return chat?.participants?.find((p: string) => p !== user.uid);
   };
 
+  const handleDeleteChat = async () => {
+    if (!chatId) return;
+    if (!window.confirm("Are you sure you want to delete this chat? This will only hide it for you.")) return;
+
+    try {
+      await updateDoc(doc(db, 'chats', chatId), {
+        deletedFor: arrayUnion(user.uid)
+      });
+      toast.success("Chat deleted.");
+      navigate('/chat');
+    } catch (error) {
+      console.error("Error deleting chat:", error);
+      toast.error("Failed to delete chat.");
+    }
+    setShowDropdown(false);
+  };
+
+  const handleBlockUser = async () => {
+    const otherId = getOtherParticipant(activeChat);
+    if (!otherId) return;
+    if (!window.confirm(`Are you sure you want to block ${recipientProfile?.displayName || 'this user'}? You will no longer see their messages or listings.`)) return;
+
+    try {
+      const token = await user.getIdToken();
+      const response = await fetch(`/api/users/${otherId}/block`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to block user.');
+      }
+
+      toast.success("User blocked successfully.");
+      // Optionally, you can update the UI to reflect the blocked status
+    } catch (error: any) {
+      toast.error(error.message);
+    }
+    setShowDropdown(false);
+  };
+
+  const handleReportUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const otherId = getOtherParticipant(activeChat);
+    if (!otherId || !reportReason.trim()) return;
+
+    try {
+      const token = await user.getIdToken();
+      const response = await fetch(`/api/users/report`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          reportedUserId: otherId,
+          reason: reportReason,
+          chatId: chatId
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to report user.');
+      }
+
+      toast.success("Report submitted. Thank you for your feedback.");
+    } catch (error: any) {
+      toast.error(error.message);
+    }
+    setShowReportModal(false);
+    setReportReason('');
+  };
+
   if (!user) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -312,9 +393,47 @@ export default function Chat({ user }: Props) {
                   <Star className="w-3.5 h-3.5 fill-current" />
                   <span>{t('chat.rateUser')}</span>
                 </button>
-                <button className="p-2 text-gray-400 hover:text-gray-900 transition-colors">
-                  <MoreVertical className="w-5 h-5" />
-                </button>
+                <div className="relative">
+                  <button onClick={() => setShowDropdown(!showDropdown)} className="p-2 text-gray-400 hover:text-gray-900 transition-colors">
+                    <MoreVertical className="w-5 h-5" />
+                  </button>
+                  <AnimatePresence>
+                    {showDropdown && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 10 }}
+                        className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-100 z-20"
+                      >
+                        <button
+                          onClick={handleBlockUser}
+                          className="w-full text-left px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 flex items-center"
+                        >
+                          <Ban className="w-4 h-4 mr-2" /> Block User
+                        </button>
+                        <button
+                          onClick={() => {
+                            setShowReportModal(true);
+                            setShowDropdown(false);
+                          }}
+                          className="w-full text-left px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 flex items-center"
+                        >
+                          <ShieldAlert className="w-4 h-4 mr-2" /> Report
+                        </button>
+                        <div className="h-px bg-gray-100 my-1" />
+                        <button
+                          onClick={handleDeleteChat}
+                          className="w-full text-left px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 flex items-center"
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" /> Delete Chat
+                        </button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                  {showDropdown && (
+                    <div className="fixed inset-0 z-10" onClick={() => setShowDropdown(false)} />
+                  )}
+                </div>
               </div>
             </div>
 
@@ -441,6 +560,54 @@ export default function Chat({ user }: Props) {
                   </button>
                 </div>
               </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Report Modal */}
+      <AnimatePresence>
+        {showReportModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="bg-white w-full max-w-md rounded-3xl shadow-2xl"
+            >
+              <form onSubmit={handleReportUser} className="p-8">
+                <div className="flex justify-between items-start mb-6">
+                  <div className="w-12 h-12 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center">
+                    <ShieldAlert className="w-6 h-6" />
+                  </div>
+                  <button type="button" onClick={() => setShowReportModal(false)} className="p-2 text-gray-400 hover:text-gray-900">
+                    <X className="w-6 h-6" />
+                  </button>
+                </div>
+                <h3 className="text-2xl font-black text-gray-900 mb-2">Report User</h3>
+                <p className="text-gray-500 font-medium text-sm mb-6">
+                  Please describe why you are reporting this user. Your feedback helps keep our community safe.
+                </p>
+                <textarea
+                  value={reportReason}
+                  onChange={(e) => setReportReason(e.target.value)}
+                  placeholder="e.g., Spam, harassment, scam attempt..."
+                  className="w-full px-5 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none font-medium text-sm min-h-[100px] resize-none"
+                  required
+                />
+                <div className="flex gap-4 mt-6">
+                  <button type="button" onClick={() => setShowReportModal(false)} className="flex-1 py-3 text-gray-500 font-bold">
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={!reportReason.trim()}
+                    className="flex-1 bg-red-600 hover:bg-red-700 text-white py-3 rounded-2xl font-black disabled:opacity-50"
+                  >
+                    Submit Report
+                  </button>
+                </div>
+              </form>
             </motion.div>
           </div>
         )}

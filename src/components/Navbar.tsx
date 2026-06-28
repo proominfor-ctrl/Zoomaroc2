@@ -18,6 +18,7 @@ export default function Navbar({ user, unreadCount = 0, notificationsCount = 0 }
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [photoURL, setPhotoURL] = useState<string | null>(user?.photoURL || null);
+  const [displayName, setDisplayName] = useState<string | null>(user?.displayName || null);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const { t } = useTranslation();
@@ -54,9 +55,11 @@ export default function Navbar({ user, unreadCount = 0, notificationsCount = 0 }
   useEffect(() => {
     if (user) {
       setPhotoURL(user.photoURL);
+      setDisplayName(user.displayName);
       syncProfile();
     } else {
       setPhotoURL(null);
+      setDisplayName(null);
     }
   }, [user]);
 
@@ -94,6 +97,7 @@ export default function Navbar({ user, unreadCount = 0, notificationsCount = 0 }
       if (userDoc.exists()) {
         const data = userDoc.data();
         setPhotoURL(data.photoURL || user?.photoURL);
+        setDisplayName(data.displayName || user?.displayName);
         setIsAdmin(data.role === 'admin');
       }
     } catch (error) {
@@ -225,7 +229,7 @@ export default function Navbar({ user, unreadCount = 0, notificationsCount = 0 }
                     )}
                   </div>
                   <span className="text-sm font-semibold text-[var(--navy-900)] group-hover:text-[var(--gold-500)] transition-colors" style={{fontFamily: 'Playfair Display, serif'}}>
-                    {user.displayName?.split(' ')[0]}
+                    {displayName?.split(' ')[0]}
                   </span>
                 </Link>
                 <button 

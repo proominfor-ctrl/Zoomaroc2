@@ -163,7 +163,7 @@ const resources = {
       },
       "login": {
         "welcome": "Welcome Back",
-        "subtitle": "Join Morocco's largest animal marketplace",
+        "subtitle": "Join Morocco's Animal Community & Marketplace",
         "google": "Continue with Google",
         "secureAccess": "Secure Access",
         "emailPlaceholder": "Email Address",
@@ -559,7 +559,7 @@ const resources = {
       },
       "login": {
         "welcome": "Bon retour",
-        "subtitle": "Rejoignez le plus grand marché animalier du Maroc",
+        "subtitle": "Rejoignez la Communauté & Marché des Animaux du Maroc",
         "google": "Continuer avec Google",
         "secureAccess": "Accès Sécurisé",
         "emailPlaceholder": "Adresse E-mail",
@@ -955,7 +955,7 @@ const resources = {
       },
       "login": {
         "welcome": "مرحباً بعودتك",
-        "subtitle": "انضم إلى أكبر سوق للحيوانات في المغرب",
+        "subtitle": "انضم إلى مجتمع وسوق الحيوانات في المغرب",
         "google": "المتابعة باستخدام جوجل",
         "secureAccess": "دخول آمن",
         "emailPlaceholder": "البريد الإلكتروني",

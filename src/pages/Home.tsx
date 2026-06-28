@@ -281,11 +281,11 @@ export default function Home({ initialCategory = 'all' }: { initialCategory?: st
   return (
     <div className="space-y-12">
       <Helmet>
-        <title>Morocco's Animal Marketplace | Su9.ma</title>
-        <meta name="description" content="Buy and sell pets, livestock, and accessories in Morocco. Find dogs, cats, sheep, and more on Su9.ma - the secure marketplace for animal lovers." />
-        <meta property="og:title" content="Su9.ma - Animals Marketplace Morocco" />
+        <title>Morocco's Animal Community & Marketplace | Su9.ma</title>
+        <meta name="description" content="Join Morocco's largest animal community and marketplace. Buy and sell pets, livestock, and accessories. Find dogs, cats, sheep, and more on Su9.ma." />
+        <meta property="og:title" content="Morocco's Animal Community & Marketplace | Su9.ma" />
         <meta property="og:description" content="Find your perfect companion. Browse thousands of listings for pets and livestock across Morocco." />
-        <meta name="keywords" content="pets morocco, dogs for sale casablanca, sheep market morocco, animals marketplace" />
+        <meta name="keywords" content="pets morocco, dogs for sale casablanca, sheep market morocco, animal community, animals marketplace" />
       </Helmet>
 
       {user && !user.emailVerified && (
