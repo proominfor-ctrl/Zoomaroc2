@@ -9,7 +9,6 @@ import { createServer as createViteServer, ViteDevServer } from "vite";
 import dotenv from "dotenv";
 import admin from 'firebase-admin';
 import { createClient } from '@supabase/supabase-js';
-import { getFirestore } from 'firebase-admin/firestore';
 import { initializeFirebaseAdmin } from "./scripts/seed-utils";
 import { firebaseConfig } from "./firebase.config.cjs";
 
@@ -210,8 +209,11 @@ async function startServer() {
 
     try {
       const decodedToken = await firebaseAdminApp.auth().verifyIdToken(token);
+      console.log('requireAdmin: token validated for uid', decodedToken.uid);
+      (req as any).authUser = decodedToken;
       const userSnap = await db.collection("users").doc(decodedToken.uid).get();
       if (userSnap.data()?.role !== "admin") {
+        console.log('requireAdmin: user is not admin', decodedToken.uid, userSnap.data()?.role);
         return res.status(403).json({ error: "Admin access required" });
       }
       next();
@@ -230,20 +232,143 @@ async function startServer() {
     }
 
     try {
-      const [usersSnapshot, listingsSnapshot, reportsSnapshot] = await Promise.all([
-        db.collection("users").get(),
-        db.collection("listings").get(),
-        db.collection("reports").where("status", "==", "pending").get()
+      const [
+        usersCountSnap,
+        listingsCountSnap,
+        couplingCountSnap,
+        healthCountSnap,
+        lostFoundCountSnap,
+        pendingListingsSnap,
+        pendingCouplingSnap,
+        pendingHealthSnap,
+        pendingLostFoundSnap,
+        reportsCountSnap
+      ] = await Promise.all([
+        db.collection('users').get(),
+        db.collection('listings').get(),
+        db.collection('coupling_offers').get(),
+        db.collection('health_posts').get(),
+        db.collection('lost_and_found_posts').get(),
+        db.collection('listings').where('status', '==', 'pending').get(),
+        db.collection('coupling_offers').where('status', '==', 'pending').get(),
+        db.collection('health_posts').where('status', '==', 'pending').get(),
+        db.collection('lost_and_found_posts').where('status', '==', 'pending').get(),
+        db.collection('reports').where('status', '==', 'pending').get()
       ]);
-      
+
       res.json({
-        users: usersSnapshot.size,
-        listings: listingsSnapshot.size,
-        pendingReports: reportsSnapshot.size
+        users: usersCountSnap.size,
+        listings: listingsCountSnap.size,
+        couplingCount: couplingCountSnap.size,
+        healthCount: healthCountSnap.size,
+        lostFoundCount: lostFoundCountSnap.size,
+        pendingListings: pendingListingsSnap.size,
+        pendingCoupling: pendingCouplingSnap.size,
+        pendingHealth: pendingHealthSnap.size,
+        pendingLostFound: pendingLostFoundSnap.size,
+        pendingReports: reportsCountSnap.size
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Admin stats error:', error);
-      res.status(500).json({ error: "Failed to fetch stats" });
+      res.status(500).json({ error: error.message || "Failed to fetch stats" });
+    }
+  });
+
+  // Ban/Unban User Route
+  app.post("/api/admin/users/:userId/:action", requireAdmin, async (req, res) => {
+    if (!firebaseAdminApp.options.credential) {
+      console.error('Admin user action request blocked: Firebase Admin credentials are not configured.');
+      return res.status(500).json({ error: 'Firebase Admin credentials are not configured. Check README and .env settings.' });
+    }
+
+    const { userId, action } = req.params;
+    if (action !== 'ban' && action !== 'unban') {
+      console.error('Invalid admin user action:', action);
+      return res.status(400).json({ error: 'Invalid action. Use ban or unban.' });
+    }
+
+    const shouldDisable = action === 'ban';
+
+    // Prevent admin from banning themselves
+    if ((req as any).authUser.uid === userId) {
+      return res.status(400).json({ error: 'Admins cannot ban themselves.' });
+    }
+
+    try {
+      // Update Firebase Auth state
+      await firebaseAdminApp.auth().updateUser(userId, {
+        disabled: shouldDisable,
+      });
+
+      // Update Firestore state
+      const userRef = db.collection('users').doc(userId);
+      const userSnap = await userRef.get();
+      const userUpdateData = {
+        disabled: shouldDisable,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      };
+
+      if (userSnap.exists) {
+        await userRef.update(userUpdateData);
+      } else {
+        await userRef.set(userUpdateData, { merge: true });
+      }
+
+      res.status(200).json({ message: `User successfully ${action}ned.` });
+    } catch (error: any) {
+      console.error(`Failed to ${action} user ${userId}:`, error);
+      if (error?.code === 'auth/user-not-found') {
+        return res.status(404).json({ error: 'User not found in Firebase Auth.' });
+      }
+      res.status(500).json({ error: error?.message || `Failed to ${action} user.` });
+    }
+  });
+
+  // Delete User Route
+  app.delete("/api/admin/users/:userId", requireAdmin, async (req, res) => {
+    if (!firebaseAdminApp.options.credential) {
+      return res.status(500).json({ error: 'Firebase Admin credentials are not configured.' });
+    }
+
+    const { userId } = req.params;
+    const authUser = (req as any).authUser;
+
+    console.log('delete user auth header present:', !!req.headers.authorization);
+    console.log('delete user authUser:', authUser?.uid);
+
+    if (!authUser?.uid) {
+      console.error('Delete user request missing authenticated user.');
+      return res.status(500).json({ error: 'Failed to authenticate delete request.' });
+    }
+
+    if (authUser.uid === userId) {
+      return res.status(400).json({ error: 'Admins cannot delete themselves.' });
+    }
+
+    try {
+      console.log(`Deleting user ${userId} requested by admin ${authUser.uid}`);
+
+      // 1. Delete from Firebase Auth if present
+      try {
+        await firebaseAdminApp.auth().deleteUser(userId);
+      } catch (authError: any) {
+        if (authError?.code === 'auth/user-not-found') {
+          console.warn(`Firebase Auth user not found for ${userId}, continuing to delete Firestore user document.`);
+        } else {
+          throw authError;
+        }
+      }
+
+      // 2. Delete from Firestore
+      await db.collection('users').doc(userId).delete();
+
+      // Note: For a full cleanup, you might also want to delete user's listings,
+      // posts, and uploaded images, which can be done here or via a Firebase Function.
+
+      res.status(200).json({ message: `User ${userId} has been permanently deleted.` });
+    } catch (error: any) {
+      console.error(`Failed to delete user ${userId}:`, error);
+      res.status(500).json({ error: error?.message || `Failed to delete user.` });
     }
   });
 

@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Helmet } from 'react-helmet-async';
-import { db, collection, query, where, orderBy, limit, onSnapshot, doc, auth, getDocs } from '../firebase';
-import { Search, MapPin, ChevronRight, LayoutGrid, PawPrint, ShoppingBag, Tractor, AlertCircle, Heart, HeartPulse, AlertTriangle } from 'lucide-react';
+import { db, collection, query, where, orderBy, limit, onSnapshot, doc, auth, getDocs, sendEmailVerification } from '../firebase';
+import { Search, MapPin, ChevronRight, LayoutGrid, PawPrint, ShoppingBag, Tractor, AlertCircle, Heart, HeartPulse, AlertTriangle, MailCheck, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link } from 'react-router-dom';
 import ListingCard from '../components/ListingCard';
@@ -33,10 +33,13 @@ export default function Home({ initialCategory = 'all' }: { initialCategory?: st
   const [location, setLocation] = useState('');
   const [currentSlide, setCurrentSlide] = useState(0);
   const [heroImages, setHeroImages] = useState<string[]>(DEFAULT_HERO_IMAGES);
+  const [isResendingVerification, setIsResendingVerification] = useState(false);
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
   const [showLocationDropdown, setShowLocationDropdown] = useState(false);
   const [translatedListings, setTranslatedListings] = useState<Record<string, { title: string; targetLang: string }>>({});
   const { t, i18n } = useTranslation();
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const verificationCheckInterval = useRef<NodeJS.Timeout | null>(null);
   const user = auth.currentUser;
 
   useEffect(() => {
@@ -160,6 +163,48 @@ export default function Home({ initialCategory = 'all' }: { initialCategory?: st
     }
   };
 
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (resendCooldown > 0) {
+      timer = setTimeout(() => setResendCooldown(resendCooldown - 1), 1000);
+    }
+    return () => clearTimeout(timer);
+  }, [resendCooldown]);
+
+  const checkEmailVerificationStatus = async () => {
+    if (user) {
+      await user.reload();
+      if (user.emailVerified) {
+        toast.success('Email verified successfully! Welcome.');
+        if (verificationCheckInterval.current) {
+          clearInterval(verificationCheckInterval.current);
+        }
+        // Force a re-render or page reload to update the UI
+        window.location.reload();
+      }
+    }
+  };
+
+  const handleResendVerification = async () => {
+    if (!user || isResendingVerification || resendCooldown > 0) return;
+    setIsResendingVerification(true);
+    try {
+      await sendEmailVerification(user);
+      setResendCooldown(30); // Start 30-second cooldown
+      toast.success('Verification email sent!', {
+        description: 'Please check your inbox (and spam folder).',
+      });
+
+      // Start checking for verification status every 5 seconds
+      if (verificationCheckInterval.current) clearInterval(verificationCheckInterval.current);
+      verificationCheckInterval.current = setInterval(checkEmailVerificationStatus, 5000);
+
+    } catch (error) {
+      toast.error('Failed to send verification email.');
+    } finally {
+      setIsResendingVerification(false);
+    }
+  };
   // Generate pools for suggestions from current listings
   const keywordPool = Array.from(new Set(listings.flatMap(l => [
     l.title,
@@ -242,6 +287,33 @@ export default function Home({ initialCategory = 'all' }: { initialCategory?: st
         <meta property="og:description" content="Find your perfect companion. Browse thousands of listings for pets and livestock across Morocco." />
         <meta name="keywords" content="pets morocco, dogs for sale casablanca, sheep market morocco, animals marketplace" />
       </Helmet>
+
+      {user && !user.emailVerified && (
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8 p-4 bg-orange-50 border-l-4 border-orange-500 rounded-r-lg flex items-center justify-between"
+        >
+          <div className="flex items-center">
+            <MailCheck className="w-6 h-6 text-orange-600 mr-4" />
+            <div>
+              <p className="font-bold text-orange-800">Verify Your Email</p>
+              <p className="text-sm text-orange-700">Please check your inbox to complete your registration.</p>
+            </div>
+          </div>
+          <button
+            onClick={handleResendVerification}
+            disabled={isResendingVerification || resendCooldown > 0}
+            className="px-4 py-2 bg-orange-600 text-white text-sm font-bold rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50 flex items-center"
+          >
+            {isResendingVerification && <RefreshCw className="w-4 h-4 mr-2 animate-spin" />}
+            {isResendingVerification 
+              ? 'Sending...' 
+              : resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend Link'
+            }
+          </button>
+        </motion.div>
+      )}
 
       {/* Hero Section (Elegant) */}
       <section className="relative h-[420px] rounded-3xl overflow-hidden bg-[var(--cream-50)] flex items-center justify-center text-center px-4">

@@ -1,9 +1,9 @@
-import { BrowserRouter as Router, Routes, Route, Navigate, Link } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
 import { lazy, Suspense, useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { HelmetProvider } from 'react-helmet-async';
 import './i18n';
-import { onAuthStateChanged, User, db, collection, query, where, onSnapshot, doc, updateDoc } from './firebase';
+import { onAuthStateChanged, User, db, collection, query, where, onSnapshot } from './firebase';
 import { auth } from './firebase';
 import { Toaster, toast } from 'sonner';
 import { Mail, MapPin, Facebook, Instagram, Twitter, MessageSquare, PlusCircle, Languages, Heart, Stethoscope, AlertTriangle } from 'lucide-react';
@@ -39,6 +39,21 @@ function PageLoader() {
       <div className="h-10 w-10 animate-spin rounded-full border-b-2 border-t-2 border-orange-500" />
     </div>
   );
+}
+
+function AuthGuard({ children }: { children: JSX.Element }) {
+  const { user, authReady } = useAuth();
+  const location = useLocation();
+
+  if (!authReady) {
+    return <PageLoader />;
+  }
+
+  if (!user) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  return children;
 }
 
 export default function App() {
@@ -128,37 +143,37 @@ export default function App() {
   return (
     <ErrorBoundary>
       <HelmetProvider>
-      <Router>
-        <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
-          <Navbar user={user} unreadCount={unreadCount} notificationsCount={notificationsCount} />
-          <main className="flex-grow container mx-auto px-4 py-8">
-            <Suspense fallback={<PageLoader />}>
-              <Routes>
-                <Route path="/" element={<Home />} />
-                <Route path="/buy-sell" element={<Home initialCategory="buy-sell" />} />
-                <Route path="/adoption" element={<Home initialCategory="adoption" />} />
-                <Route path="/login" element={!authReady ? <PageLoader /> : !user ? <Login /> : <Navigate to="/" />} />
-                <Route path="/profile" element={!authReady ? <PageLoader /> : user ? <Profile user={user} /> : <Navigate to="/login" />} />
-                <Route path="/profile/:userId" element={<Profile user={user} />} />
-                <Route path="/create" element={!authReady ? <PageLoader /> : user ? <CreateListing user={user} /> : <Navigate to="/login" />} />
-                <Route path="/listing/:id" element={<ListingDetail user={user} />} />
-                <Route path="/chat" element={!authReady ? <PageLoader /> : user ? <Chat user={user} /> : <Navigate to="/login" />} />
-                <Route path="/chat/:chatId" element={!authReady ? <PageLoader /> : user ? <Chat user={user} /> : <Navigate to="/login" />} />
-                <Route path="/admin" element={!authReady ? <PageLoader /> : user ? <Admin user={user} /> : <Navigate to="/login" />} />
-                <Route path="/terms" element={<Terms />} />
-                <Route path="/privacy" element={<Privacy />} />
-                <Route path="/safety" element={<Safety />} />
-                <Route path="/health" element={<Health user={user} />} />
-                <Route path="/health/:id" element={<HealthDetail user={user} />} />
-                <Route path="/health/create" element={!authReady ? <PageLoader /> : user ? <CreateHealthPost user={user} /> : <Navigate to="/login" />} />
-                <Route path="/notifications" element={!authReady ? <PageLoader /> : user ? <Notifications user={user} /> : <Navigate to="/login" />} />
-                <Route path="/coupling" element={<Coupling />} />
-                <Route path="/coupling/create" element={!authReady ? <PageLoader /> : user ? <CreateCoupling /> : <Navigate to="/login" />} />
-                <Route path="/coupling/:id" element={<CouplingDetail user={user} />} />
-                <Route path="/lost-and-found" element={<LostAndFound user={user} />} />
-              </Routes>
-            </Suspense>
-          </main>
+        <Router>
+          <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
+            <Navbar user={user} unreadCount={unreadCount} notificationsCount={notificationsCount} />
+            <main className="flex-grow container mx-auto px-4 py-8">
+              <Suspense fallback={<PageLoader />}>
+                <Routes>
+                  <Route path="/" element={<Home />} />
+                  <Route path="/buy-sell" element={<Home initialCategory="buy-sell" />} />
+                  <Route path="/adoption" element={<Home initialCategory="adoption" />} />
+                  <Route path="/login" element={!authReady ? <PageLoader /> : !user ? <Login /> : <Navigate to="/" />} />
+                  <Route path="/profile" element={<AuthGuard><Profile user={user} /></AuthGuard>} />
+                  <Route path="/profile/:userId" element={<Profile user={user} />} />
+                  <Route path="/create" element={<AuthGuard><CreateListing user={user!} /></AuthGuard>} />
+                  <Route path="/listing/:id" element={<ListingDetail user={user} />} />
+                  <Route path="/chat" element={<AuthGuard><Chat user={user!} /></AuthGuard>} />
+                  <Route path="/chat/:chatId" element={<AuthGuard><Chat user={user!} /></AuthGuard>} />
+                  <Route path="/admin" element={<AuthGuard><Admin user={user!} /></AuthGuard>} />
+                  <Route path="/terms" element={<Terms />} />
+                  <Route path="/privacy" element={<Privacy />} />
+                  <Route path="/safety" element={<Safety />} />
+                  <Route path="/health" element={<Health user={user} />} />
+                  <Route path="/health/:id" element={<HealthDetail user={user} />} />
+                  <Route path="/health/create" element={<AuthGuard><CreateHealthPost user={user!} /></AuthGuard>} />
+                  <Route path="/notifications" element={<AuthGuard><Notifications user={user!} /></AuthGuard>} />
+                  <Route path="/coupling" element={<Coupling />} />
+                  <Route path="/coupling/create" element={<AuthGuard><CreateCoupling /></AuthGuard>} />
+                  <Route path="/coupling/:id" element={<CouplingDetail user={user} />} />
+                  <Route path="/lost-and-found" element={<LostAndFound user={user} />} />
+                </Routes>
+              </Suspense>
+            </main>
 
           {/* Enhanced Footer */}
           <footer className="bg-white border-t mt-auto">
@@ -303,9 +318,21 @@ export default function App() {
           </footer>
 
           <Toaster position="top-right" richColors />
-        </div>
-      </Router>
+          </div>
+        </Router>
       </HelmetProvider>
     </ErrorBoundary>
   );
+}
+
+function useAuth() {
+  const [user, setUser] = useState<User | null>(auth.currentUser);
+  const [authReady, setAuthReady] = useState(false);
+
+  useEffect(() => onAuthStateChanged(auth, (u) => {
+    setUser(u);
+    setAuthReady(true);
+  }), []);
+
+  return { user, authReady };
 }

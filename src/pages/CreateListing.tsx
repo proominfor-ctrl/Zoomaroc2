@@ -266,6 +266,12 @@ export default function CreateListing({ user }: Props) {
       return;
     }
 
+    if (!auth.currentUser.emailVerified) {
+      toast.error('Email Verification Required', {
+        description: 'Please verify your email address before publishing an ad. Check your inbox for a verification link.',
+      });
+      return;
+    }
     setUploading(true);
     console.log('🚀 Starting listing creation for user:', user.uid);
     

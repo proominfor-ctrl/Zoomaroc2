@@ -28,23 +28,37 @@ export default function Chat({ user }: Props) {
 
   useEffect(() => {
     if (!user?.uid) return;
-    // Fetch user's chats
+    // Fetch user's chats without requiring a composite Firestore index,
+    // then sort locally by lastMessageAt.
     const q = query(
       collection(db, 'chats'),
-      where('participants', 'array-contains', user.uid),
-      orderBy('lastMessageAt', 'desc')
+      where('participants', 'array-contains', user.uid)
     );
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const chatData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setChats(chatData);
-      setLoading(false);
-      
-      if (chatId) {
-        const current = chatData.find(c => c.id === chatId);
-        if (current) setActiveChat(current);
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const chatData = snapshot.docs
+          .map(doc => ({ id: doc.id, ...doc.data() }))
+          .sort((a: any, b: any) => {
+            const aTime = a.lastMessageAt?.toMillis?.() || 0;
+            const bTime = b.lastMessageAt?.toMillis?.() || 0;
+            return bTime - aTime;
+          });
+
+        setChats(chatData);
+        setLoading(false);
+        
+        if (chatId) {
+          const current = chatData.find(c => c.id === chatId);
+          if (current) setActiveChat(current);
+        }
+      },
+      (error) => {
+        console.error('Chat listener failed:', error);
+        setLoading(false);
       }
-    });
+    );
 
     return () => unsubscribe();
   }, [user?.uid, chatId]);

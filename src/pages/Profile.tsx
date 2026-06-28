@@ -671,6 +671,7 @@ export default function Profile({ user }: Props) {
               </motion.div>
             )}
           </AnimatePresence>
+
         </div>
       </div>
     </div>

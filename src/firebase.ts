@@ -8,7 +8,11 @@ import {
   User, 
   updateProfile,
   createUserWithEmailAndPassword,
-  signInWithEmailAndPassword
+  signInWithEmailAndPassword,
+  sendEmailVerification,
+  sendPasswordResetEmail,
+  RecaptchaVerifier,
+  PhoneAuthProvider
 } from 'firebase/auth';
 import { getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, addDoc, query, where, orderBy, limit, onSnapshot, Timestamp, getDocFromServer, increment, arrayUnion, arrayRemove, getCountFromServer, writeBatch } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -100,6 +104,10 @@ export {
   updateProfile,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
+  sendEmailVerification,
+  sendPasswordResetEmail,
+  RecaptchaVerifier,
+  PhoneAuthProvider,
   collection, 
   doc, 
   getDoc, 

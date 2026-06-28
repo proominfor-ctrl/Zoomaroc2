@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { db, collection, getDocs, query, where, orderBy, limit, User, doc, getDoc, updateDoc, deleteDoc, Timestamp, addDoc, setDoc, getCountFromServer } from '../firebase';
+import { db, collection, getDocs, query, where, orderBy, limit, User, doc, getDoc, updateDoc, deleteDoc, Timestamp, addDoc, setDoc } from '../firebase';
 import { Shield, Users, LayoutGrid, AlertTriangle, BarChart3, Trash2, Ban, CheckCircle2, MoreVertical, Search, Filter, BadgeCheck, ExternalLink, MessageSquare, Settings, Image as ImageIcon, Stethoscope, Heart, HelpCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
@@ -58,35 +58,23 @@ export default function Admin({ user }: Props) {
   const fetchStats = async () => {
     try {
       setStatsError('');
-      
-      const [usersCount, listingsCount, couplingCount, healthCount, lostFoundCount, pendingListings, pendingCoupling, pendingHealth, pendingLostFound, reportsCount] = await Promise.all([
-        getCountFromServer(collection(db, 'users')),
-        getCountFromServer(collection(db, 'listings')),
-        getCountFromServer(collection(db, 'coupling_offers')),
-        getCountFromServer(collection(db, 'health_posts')),
-        getCountFromServer(collection(db, 'lost_and_found_posts')),
-        getCountFromServer(query(collection(db, 'listings'), where('status', '==', 'pending'))),
-        getCountFromServer(query(collection(db, 'coupling_offers'), where('status', '==', 'pending'))),
-        getCountFromServer(query(collection(db, 'health_posts'), where('status', '==', 'pending'))),
-        getCountFromServer(query(collection(db, 'lost_and_found_posts'), where('status', '==', 'pending'))),
-        getCountFromServer(query(collection(db, 'reports'), where('status', '==', 'pending')))
-      ]);
-
-      setStats({
-        users: usersCount.data().count,
-        listings: listingsCount.data().count,
-        couplingCount: couplingCount.data().count,
-        healthCount: healthCount.data().count,
-        lostFoundCount: lostFoundCount.data().count,
-        pendingListings: pendingListings.data().count,
-        pendingCoupling: pendingCoupling.data().count,
-        pendingHealth: pendingHealth.data().count,
-        pendingLostFound: pendingLostFound.data().count,
-        pendingReports: reportsCount.data().count
+      const token = await user.getIdToken();
+      const response = await fetch('/api/admin/stats', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
       });
-    } catch (error) {
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Failed to fetch stats from server.' }));
+        throw new Error(errorData.error || `Server responded with ${response.status}`);
+      }
+
+      const data = await response.json();
+      setStats(data);
+    } catch (error: any) {
       console.error('Error fetching stats:', error);
-      setStatsError('Unable to load admin stats directly from Firestore. Check your security rules.');
+      setStatsError(error.message || 'An unknown error occurred while fetching stats.');
     }
   };
 
@@ -537,6 +525,74 @@ export default function Admin({ user }: Props) {
       });
     } finally {
       setIsStartingChat(false);
+    }
+  };
+
+  const handleBanUser = async (targetUserId: string, isCurrentlyBanned: boolean) => {
+    if (targetUserId === user.uid) {
+      toast.error("You cannot ban yourself.");
+      return;
+    }
+
+    const action = isCurrentlyBanned ? 'unban' : 'ban';
+    if (!window.confirm(`Are you sure you want to ${action} this user?`)) return;
+
+    try {
+      const token = await user.getIdToken();
+      const response = await fetch(`/api/admin/users/${targetUserId}/${action}`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        let serverMessage = errorText;
+        try {
+          const errorBody = JSON.parse(errorText);
+          serverMessage = errorBody?.error || errorBody?.message || errorText;
+        } catch {
+          serverMessage = errorText;
+        }
+        throw new Error(serverMessage || 'Server returned an error.');
+      }
+
+      toast.success(`User has been ${action}ned.`);
+      fetchUsers(); // Refresh the user list
+    } catch (error: any) {
+      toast.error(`Failed to ${action} user`, { description: error.message });
+    }
+  };
+
+  const handleDeleteUser = async (targetUserId: string) => {
+    if (targetUserId === user.uid) {
+      toast.error("You cannot delete yourself.");
+      return;
+    }
+
+    if (!window.confirm(`Are you sure you want to PERMANENTLY DELETE this user? This action cannot be undone.`)) return;
+
+    try {
+      const token = await user.getIdToken();
+      const response = await fetch(`/api/admin/users/${targetUserId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+
+      if (!response.ok) {
+        let serverMessage = 'Server returned an error.';
+        try {
+          const errorBody = await response.json();
+          serverMessage = errorBody?.error || errorBody?.message || serverMessage;
+        } catch {
+          // If parsing fails, the original message is fine.
+        }
+        throw new Error(serverMessage);
+      }
+
+      toast.success(`User has been deleted.`);
+      fetchUsers(); // Refresh the user list
+    } catch (error: any) {
+      toast.error(`Failed to delete user`, { description: error.message });
     }
   };
 
@@ -1269,6 +1325,7 @@ export default function Admin({ user }: Props) {
                                 <Shield className="w-5 h-5" />
                               </button>
                               <button 
+                                type="button"
                                 onClick={() => handleToggleTrusted(u.id, u.isTrusted)}
                                 className={`p-2 transition-colors rounded-lg ${u.isTrusted ? 'text-[#006d2c] hover:bg-[#006d2c]/10' : 'text-gray-400 hover:bg-gray-50'}`}
                                 title={u.isTrusted ? "Remove Trusted Status" : "Mark as Trusted Seller"}
@@ -1276,14 +1333,26 @@ export default function Admin({ user }: Props) {
                                 <BadgeCheck className="w-5 h-5" />
                               </button>
                               <button 
+                                type="button"
                                 onClick={() => handleContactUser(u)}
                                 className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
                                 title="Message User"
                               >
                                 <MessageSquare className="w-5 h-5" />
                               </button>
-                              <button className="p-2 text-gray-400 hover:text-orange-600 transition-colors">
+                              <button 
+                                type="button"
+                                onClick={() => handleBanUser(u.id, u.disabled)}
+                                className={`p-2 transition-colors rounded-lg ${u.disabled ? 'text-red-600 hover:bg-red-50' : 'text-gray-400 hover:bg-gray-50'}`}
+                                title={u.disabled ? 'Unban User' : 'Ban User'}>
                                 <Ban className="w-5 h-5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteUser(u.id)}
+                                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                title="Delete User Permanently">
+                                <Trash2 className="w-5 h-5" />
                               </button>
                             </div>
                           </td>
